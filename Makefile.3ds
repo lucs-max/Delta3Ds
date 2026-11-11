@@ -1,0 +1,95 @@
+#---------------------------------------------------------------------------------
+# Delta3DS - 3DS build (devkitARM). Use the top-level Makefile:
+#   make new    -> Delta3DS.3dsx      (New 3DS / New 2DS XL)
+#   make old    -> Delta3DS-old.3dsx  (Old 3DS / 2DS)
+#---------------------------------------------------------------------------------
+.SUFFIXES:
+
+ifeq ($(strip $(DEVKITARM)),)
+$(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to>devkitARM")
+endif
+
+TOPDIR ?= $(CURDIR)
+include $(DEVKITARM)/3ds_rules
+
+CONSOLE ?= new
+
+ifeq ($(CONSOLE),new)
+TARGET          := Delta3DS
+BUILD           := build_new
+CONSOLE_DEFINES := -DD3DS_NEW3DS
+APP_TITLE       := Delta3DS
+else
+TARGET          := Delta3DS-old
+BUILD           := build_old
+CONSOLE_DEFINES :=
+APP_TITLE       := Delta3DS (Old 3DS)
+endif
+
+SOURCES         := src src/core src/platform
+DATA            :=
+INCLUDES        := src
+APP_DESCRIPTION := GameMaker runner - play your own games
+APP_AUTHOR      := Delta3DS contributors
+ICON            := meta/icon.png
+
+#---------------------------------------------------------------------------------
+ARCH    := -march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
+
+CFLAGS  := -g -Wall -O2 -mword-relocations -ffunction-sections -fno-strict-aliasing \
+           -std=gnu11 -Wno-format-truncation $(ARCH)
+CFLAGS  += $(INCLUDE) -D__3DS__ $(CONSOLE_DEFINES)
+
+ASFLAGS := -g $(ARCH)
+LDFLAGS  = -specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
+
+LIBS    := -lcitro2d -lcitro3d -lvorbisidec -logg -lctru -lm
+LIBDIRS := $(CTRULIB) $(PORTLIBS)
+
+#---------------------------------------------------------------------------------
+ifneq ($(BUILD),$(notdir $(CURDIR)))
+#---------------------------------------------------------------------------------
+
+export OUTPUT   := $(CURDIR)/$(TARGET)
+export TOPDIR   := $(CURDIR)
+export VPATH    := $(foreach dir,$(SOURCES),$(CURDIR)/$(dir))
+export DEPSDIR  := $(CURDIR)/$(BUILD)
+
+CFILES          := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
+
+export LD       := $(CC)
+export OFILES   := $(CFILES:.c=.o)
+export INCLUDE  := $(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
+                   $(foreach dir,$(LIBDIRS),-I$(dir)/include) \
+                   -I$(CURDIR)/$(BUILD)
+export LIBPATHS := $(foreach dir,$(LIBDIRS),-L$(dir)/lib)
+
+export APP_ICON := $(TOPDIR)/$(ICON)
+export _3DSXFLAGS += --smdh=$(CURDIR)/$(TARGET).smdh
+
+.PHONY: all clean
+
+all: $(BUILD)
+	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile.3ds CONSOLE=$(CONSOLE)
+
+$(BUILD):
+	@mkdir -p $@
+
+clean:
+	@echo clean ...
+	@rm -fr $(BUILD) $(TARGET).3dsx $(TARGET).smdh $(TARGET).elf
+
+#---------------------------------------------------------------------------------
+else
+#---------------------------------------------------------------------------------
+
+DEPENDS := $(OFILES:.o=.d)
+
+$(OUTPUT).3dsx : $(OUTPUT).elf $(OUTPUT).smdh
+$(OUTPUT).elf  : $(OFILES)
+
+-include $(DEPENDS)
+
+#---------------------------------------------------------------------------------
+endif
+#---------------------------------------------------------------------------------

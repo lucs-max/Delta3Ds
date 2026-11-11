@@ -1,0 +1,38 @@
+name: build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    name: Interpreter tests (desktop)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Python packages
+        run: pip install pillow numpy
+      - name: Build and run tests
+        run: make test
+      - name: Tests under AddressSanitizer
+        run: make asan && tests/run_tests.sh build_host/delta3ds_host_asan
+
+  3ds:
+    name: 3DS builds (New + Old)
+    runs-on: ubuntu-latest
+    container: devkitpro/devkitarm:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tremor (Ogg Vorbis decoder)
+        run: |
+          dkp-pacman -Sy --noconfirm --needed 3ds-libvorbisidec 3ds-libogg || \
+            (dkp-pacman -Syu --noconfirm && dkp-pacman -S --noconfirm --needed 3ds-libvorbisidec 3ds-libogg)
+      - name: Build
+        run: make new old
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Delta3DS
+          path: |
+            Delta3DS.3dsx
+            Delta3DS-old.3dsx
+            tools/d3ds_convert.py

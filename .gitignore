@@ -1,0 +1,15 @@
+build_new/
+build_old/
+build_host/
+*.3dsx
+*.smdh
+*.elf
+*.map
+d3ds_save/
+__pycache__/
+*.pyc
+# never commit game files
+data.win
+*.win
+audiogroup*.dat
+d3ds/
