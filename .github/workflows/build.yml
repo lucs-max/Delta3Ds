@@ -59,8 +59,8 @@ jobs:
           path: .
       - name: Install packages
         run: pip install qrcode pillow
-      - name: Get makerom and bannertool
-        run: python3 tools/ci_fetch_tools.py ci-tools
+      - name: Build makerom and bannertool
+        run: tools/ci_build_tools.sh ci-tools
       - name: Build CIAs
         run: make package-cia MAKEROM=ci-tools/makerom BANNERTOOL=ci-tools/bannertool
       - name: Make QR codes
