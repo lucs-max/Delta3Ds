@@ -13,3 +13,8 @@ data.win
 *.win
 audiogroup*.dat
 d3ds/
+*.cia
+build_cia/
+ci-tools/
+qr-*.png
+!docs/qr-*.png

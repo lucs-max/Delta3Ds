@@ -13,12 +13,39 @@ Delta3DS is not a port and contains no game files. It works like ScummVM. The 3D
 - DELTARUNE for **Windows**, bought by you. Only the PC files work, because the runner needs a `data.win` with bytecode.
 - A PC with Python 3.8+ and the packages in `tools/requirements.txt` (`pip install pillow numpy`).
 
+## Install with FBI (QR code)
+
+On your 3DS, open **FBI → Remote Install → Scan QR Code** and point the camera at the code for your console:
+
+| New 3DS / New 3DS XL / New 2DS XL | Old 3DS / 3DS XL / 2DS |
+|:---:|:---:|
+| <img src="docs/qr-new3ds.png" width="220" alt="QR code for Delta3DS.cia"> | <img src="docs/qr-old3ds.png" width="220" alt="QR code for Delta3DS-old.cia"> |
+| [Delta3DS.cia](https://github.com/lucs-max/Delta3Ds/releases/download/nightly/Delta3DS.cia) | [Delta3DS-old.cia](https://github.com/lucs-max/Delta3Ds/releases/download/nightly/Delta3DS-old.cia) |
+
+FBI downloads and installs the newest build. Every push rebuilds the CIAs and replaces the files on the [`nightly` release](https://github.com/lucs-max/Delta3Ds/releases/tag/nightly), but the links stay the same, so these QR codes always install the latest version. Scan again to update. The two builds have different title IDs, so both can be installed at once.
+
+**From your own PC instead:** put the `.cia` files in a folder and run
+
+```bash
+python3 tools/serve_qr.py path/to/folder
+```
+
+This shares the folder on your local network and shows a QR code for each CIA in the terminal (it also saves them as PNGs). Scan one with FBI. The PC and the 3DS must be on the same Wi-Fi.
+
+To make a QR code for any other `.cia` link:
+
+```bash
+python3 tools/make_qr.py https://example.com/file.cia qr.png
+```
+
+The QR tools need `pip install qrcode pillow`.
+
 ## Which build to use
 
 | File | Console | Differences |
 |---|---|---|
-| `Delta3DS.3dsx` | New 3DS, New 3DS XL, New 2DS XL | 804 MHz CPU + L2 cache, full-colour (RGBA8) textures, 40 MB texture cache, audio decoding on core 2 |
-| `Delta3DS-old.3dsx` | Old 3DS, 3DS XL, 2DS | 16-bit (RGBA4) textures to halve memory, 14 MB texture cache, audio decoding on core 1 |
+| `Delta3DS.cia` / `Delta3DS.3dsx` | New 3DS, New 3DS XL, New 2DS XL | 804 MHz CPU + L2 cache, full-colour (RGBA8) textures, 40 MB texture cache, audio decoding on core 2 |
+| `Delta3DS-old.cia` / `Delta3DS-old.3dsx` | Old 3DS, 3DS XL, 2DS | 16-bit (RGBA4) textures to halve memory, 14 MB texture cache, audio decoding on core 1 |
 
 The New 3DS build warns you if it starts on an Old 3DS. The Old 3DS build also runs on a New 3DS, just more slowly.
 
@@ -34,9 +61,9 @@ The New 3DS build warns you if it starts on an Old 3DS. The Old 3DS build also r
 
 2. **Copy to the SD card:** put the contents of `D3DS_SD/` in `sdmc:/3ds/Delta3DS/`, so you have for example `sdmc:/3ds/Delta3DS/data.win` and `sdmc:/3ds/Delta3DS/chapter1_windows/data.win`.
 
-3. **Copy the app:** put `Delta3DS.3dsx` (New 3DS) or `Delta3DS-old.3dsx` (Old 3DS) in `sdmc:/3ds/`.
+3. **Install the app.** The easiest way is to scan a QR code with FBI (see [Install with FBI](#install-with-fbi-qr-code)). This installs Delta3DS as a CIA, so it gets its own icon on the HOME Menu. Alternatively, put `Delta3DS.3dsx` (New 3DS) or `Delta3DS-old.3dsx` (Old 3DS) in `sdmc:/3ds/` and use the Homebrew Launcher.
 
-4. Start it from the Homebrew Launcher and pick a folder on the bottom screen. When a game calls `game_change()` (the chapter select does this), the runner starts the chapter's `data.win` by itself.
+4. Start it from the HOME Menu (or the Homebrew Launcher) and pick a folder on the bottom screen. When a game calls `game_change()` (the chapter select does this), the runner starts the chapter's `data.win` by itself.
 
 Saves go to `sdmc:/3ds/Delta3DS/saves/`. The log goes to `sdmc:/3ds/Delta3DS/delta3ds.log` and also shows on the bottom screen. Please attach it when you report a problem.
 
@@ -77,6 +104,10 @@ make new        # Delta3DS.3dsx
 make old        # Delta3DS-old.3dsx
 ```
 
+```bash
+make cia        # Delta3DS.cia + Delta3DS-old.cia (also needs makerom and bannertool in PATH)
+```
+
 The interpreter also builds on a normal PC, where it runs headless for testing:
 
 ```bash
@@ -89,7 +120,7 @@ build_host/delta3ds_host path/to/data.win 300
 
 The second command runs 300 frames of a game and logs every function the game calls that isn't implemented yet. That is the fastest way to find out what a real game still needs. Set `D3_TRACE_DRAW=1` to print every draw call.
 
-GitHub Actions builds both `.3dsx` files on every push (see `.github/workflows/build.yml`) and uploads them as an artifact.
+On every push, GitHub Actions builds both versions as `.3dsx` and `.cia`, makes the QR codes, and publishes everything on the `nightly` release (see `.github/workflows/build.yml`).
 
 ## How it works
 

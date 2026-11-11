@@ -31,8 +31,66 @@ jobs:
         run: make new old
       - uses: actions/upload-artifact@v4
         with:
-          name: Delta3DS
+          name: Delta3DS-build
           path: |
             Delta3DS.3dsx
             Delta3DS-old.3dsx
-            tools/d3ds_convert.py
+            Delta3DS.elf
+            Delta3DS-old.elf
+
+  # Packs the builds as .cia and publishes them on the "nightly" release.
+  # The download URLs never change, so the QR codes in the README always
+  # install the newest build: FBI -> Remote Install -> Scan QR Code.
+  package-cia:
+    name: CIA + QR codes
+    needs: [test, build-3ds]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GITHUB_TOKEN: ${{ github.token }}
+      BASE_URL: https://github.com/${{ github.repository }}/releases/download/nightly
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Delta3DS-build
+          path: .
+      - name: Install packages
+        run: pip install qrcode pillow
+      - name: Get makerom and bannertool
+        run: python3 tools/ci_fetch_tools.py ci-tools
+      - name: Build CIAs
+        run: make package-cia MAKEROM=ci-tools/makerom BANNERTOOL=ci-tools/bannertool
+      - name: Make QR codes
+        run: |
+          python3 tools/make_qr.py "$BASE_URL/Delta3DS.cia" qr-new3ds.png
+          python3 tools/make_qr.py "$BASE_URL/Delta3DS-old.cia" qr-old3ds.png
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Delta3DS-cia
+          path: |
+            Delta3DS.cia
+            Delta3DS-old.cia
+            qr-new3ds.png
+            qr-old3ds.png
+      - name: Publish nightly release
+        if: github.event_name == 'push'
+        run: |
+          cat > notes.md <<EOF
+          Automatic build of \`${GITHUB_SHA::7}\` from \`${GITHUB_REF_NAME}\`.
+
+          **Install with FBI:** Remote Install -> Scan QR Code.
+
+          | New 3DS / New 2DS XL | Old 3DS / 2DS |
+          |---|---|
+          | ![New 3DS]($BASE_URL/qr-new3ds.png) | ![Old 3DS]($BASE_URL/qr-old3ds.png) |
+          | [Delta3DS.cia]($BASE_URL/Delta3DS.cia) | [Delta3DS-old.cia]($BASE_URL/Delta3DS-old.cia) |
+
+          The .3dsx files are for the Homebrew Launcher. No game files are included.
+          EOF
+          gh release delete nightly --yes --cleanup-tag || true
+          gh release create nightly --prerelease --target "$GITHUB_SHA" --title "Delta3DS nightly" \
+            --notes-file notes.md \
+            Delta3DS.cia Delta3DS-old.cia Delta3DS.3dsx Delta3DS-old.3dsx qr-new3ds.png qr-old3ds.png
